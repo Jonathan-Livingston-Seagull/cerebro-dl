@@ -6,7 +6,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils import check_random_state
 
 from ..optimizer.gradient_descent import MiniBatchGradientDescent
-from ..model import bernoulli_grbm_model
+from cerebro.models import bernoulli_grbm_model
 
 
 class GRBM(BaseEstimator, ClassifierMixin):
@@ -77,9 +77,7 @@ class GRBM(BaseEstimator, ClassifierMixin):
         self.grbm_batch_size = grbm_batch_size
         self.grbm_n_iter = grbm_n_iter
         self.grbm_n_gibbs_steps = grbm_n_gibbs_steps
-
-        self.random_state = random_state
-        self.rng_ = check_random_state(random_state)
+        self.rng = check_random_state(random_state)
         self.plot_hidden = plot_hidden
         self.plot_reconstd = plot_reconstd
         self.plot_visible_reconstd = plot_visible_reconstd
@@ -127,7 +125,7 @@ class GRBM(BaseEstimator, ClassifierMixin):
 
         random_state = check_random_state(self.random_state)
         if "binary" == self.visible_units:
-            self.grbm_model_ = bernoulli_grbm_model.BernoulliGRBMModel(self.var_x, self.var_y, n_classes, n_features, self.n_hidden, self.rng_,
+            self.grbm_model_ = bernoulli_grbm_model.BernoulliGRBMModel(self.var_x, self.var_y, n_classes, n_features, self.n_hidden, self.rng,
                                                   self.C1, self.C2, self.penalty,
                                                   self.contraction_level, self.activation,self.noise_type,
                                                   self.noise, self.pdrop)
