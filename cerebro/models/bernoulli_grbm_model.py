@@ -81,7 +81,7 @@ class BernoulliGRBMModel(object):
                                   name='lbias', borrow=True)
         self._theano_rng = RandomStreams(rng.randint(2 ** 30))
 
-        self.params = [self.W, self.W,self.hbias, self.vbias, self.lbias]
+        self.params = [self.W, self.U, self.hbias, self.lbias]
 
         self.penalty = penalty
         self.contraction_level = contraction_level
@@ -428,7 +428,7 @@ class BernoulliGRBMModel(object):
         
         cost, updates, chain_start, nh_samples, chain_end_x, chain_end_y = self.grbm_cost(chain_start, k)
         # We must not compute the gradient through the gibbs sampling
-        gparams = T.grad(cost, self.parameters(), consider_constant=[chain_end_x, chain_end_y])
+        gparams = T.grad(cost, self.params, consider_constant=[chain_end_x, chain_end_y])
 
         # Note that this works only if chain_start is a shared variable
         if chain_start is not None:

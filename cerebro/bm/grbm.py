@@ -89,7 +89,7 @@ class GRBM(BaseEstimator, ClassifierMixin):
         self.C1 = C1
         self.C2 = C2
         self.penalty=penalty
-        
+        self.random_state = random_state
         self.grbm_model_ = None
         self.var_x = T.matrix('x')
         self.var_y = T.matrix('Y')
@@ -109,9 +109,10 @@ class GRBM(BaseEstimator, ClassifierMixin):
         -------
         self : an instance of self
         """
+
         n_features = x.shape[1]
         n_classes = len(numpy.unique(y))
-        #converting onevsall encoding
+        # converting one vs all encoding
         label = numpy.ones(shape=(y.shape[0],n_classes))
         for i in range(n_classes):
             one_class = numpy.zeros(n_classes)
@@ -126,8 +127,7 @@ class GRBM(BaseEstimator, ClassifierMixin):
         random_state = check_random_state(self.random_state)
         if "binary" == self.visible_units:
             self.grbm_model_ = bernoulli_grbm_model.BernoulliGRBMModel(self.var_x, self.var_y, n_classes, n_features, self.n_hidden, self.rng,
-                                                  self.C1, self.C2, self.penalty,
-                                                  self.contraction_level, self.activation,self.noise_type,
+                                                  self.C1, self.C2, self.penalty,self.contraction_level, self.activation,self.noise_type,
                                                   self.noise, self.pdrop)
 
         else:
@@ -158,6 +158,7 @@ class GRBM(BaseEstimator, ClassifierMixin):
         p : array-like, shape = [n_samples, n_classes]
             Returns the probability of the sample for each class in the model.
         """
+
         if isinstance(x, theano.compile.SharedVariable):
             test_set_x = x
         else:

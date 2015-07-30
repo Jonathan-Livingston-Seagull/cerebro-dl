@@ -15,17 +15,17 @@ class LogisticRegressionModel(object):
     def __init__(self, var_input, var_label, n_features, n_classes):
         self.var_input = var_input
         self.var_label = var_label
-        self.weights = theano.shared(numpy.zeros((n_features, n_classes), dtype=theano.config.floatX),
-                                     borrow=True, name="weights")
-        self.bias = theano.shared(numpy.zeros((n_classes,), dtype=theano.config.floatX),
-                                  borrow=True, name="bias")
+        self.W = theano.shared(numpy.zeros((n_features, n_classes), dtype=theano.config.floatX),
+                                     borrow=True, name="W")
+        self.b = theano.shared(numpy.zeros((n_classes,), dtype=theano.config.floatX),
+                                  borrow=True, name="b")
 
-        self.p_y_given_x = T.nnet.softmax(T.dot(var_input, self.weights) + self.bias)
+        self.p_y_given_x = T.nnet.softmax(T.dot(var_input, self.W) + self.b)
         self.shape = (n_features, n_classes)
-        self.params = [self.weights, self.bias]
+        self.params = [self.W, self.b]
 
     def parameters(self):
-        return self.weights, self.bias
+        return self.W, self.b
 
     def predict_function(self):
         return T.argmax(self.p_y_given_x, axis=1)
@@ -51,7 +51,7 @@ class LogisticRegressionModel(object):
 
     def parameters_gradient_updates(self):
         cost = self.get_monitoring_cost()
-        return T.grad(cost, [self.weights, self.bias]), None
+        return T.grad(cost, self.params), None
 
     def get_input(self):
         return self.var_input, self.var_label

@@ -2,7 +2,6 @@ import theano
 import theano.tensor as T
 from theano.tensor.signal import downsample
 from theano.tensor.nnet import conv
-from theano.tensor.shared_randomstreams import RandomStreams
 import numpy
 import math
 

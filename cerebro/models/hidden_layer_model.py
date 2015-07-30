@@ -46,6 +46,7 @@ class HiddenLayerModel(object):
         #        compared to tanh
         #        We have no info for other function, so we use the same as
         #        tanh.
+
         if W is None:
             W_values = numpy.asarray(
                 rng.uniform(
