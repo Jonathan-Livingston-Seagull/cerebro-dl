@@ -23,32 +23,32 @@ def ReLU(x):
 class BernoulliGRBMModel(object):
     """ Create Classification Restricted Boltzmann Machine for generative training
 
-        :param _input_variable: Theano symbolic variable indicating the input matrix(x)
+        :param input_variable: Theano symbolic variable indicating the input matrix(x)
         
-        :param _input_label: Theano symbolic variable indicating the input matrix(y)
+        :param input_label: Theano symbolic variable indicating the input matrix(y)
 
-        :param _n_visible: Number of visible units
-        :type _n_visible: integer
+        :param n_visible: Number of visible units
+        :type n_visible: integer
         
-        :param _n_classes: Number of classes
-        :type _n_classes: integer
+        :param n_classes: Number of classes
+        :type n_classes: integer
 
-        :param _n_hidden: Number of hidden units
-        :type _n_hidden: integer
+        :param n_hidden: Number of hidden units
+        :type n_hidden: integer
         
-        :param _penalty: different types of regularization
-        :type _penalty: String
+        :param penalty: different types of regularization
+        :type penalty: String
         :values: 'l1', 'l2', 'elastic'
         :default: 'None'
 
-        :param _C1 : weight for regularization penalty: ['L1']
-        :type _C1 :float, optional
+        :param C1 : weight for regularization penalty: ['L1']
+        :type C1 :float, optional
             
-        :param _C2 : weight for regularization penalty: ['L2']
-        :type: _C2 :float, optional
+        :param C2 : weight for regularization penalty: ['L2']
+        :type: C2 :float, optional
 
-        :param _pdrop: probability for dropout regularization
-        :type _pdrop: float
+        :param pdrop: probability for dropout regularization
+        :type pdrop: float
         :default: 0.0 
         
         :param rng: Random number generation
@@ -60,12 +60,12 @@ class BernoulliGRBMModel(object):
                  noise_type = 'None',
                  noise = 1.0, pdrop = 0):
 
-        self._input_x = input_variable
-        self._input_y_binary = input_label
-        self._n_classes = n_classes
-        self._binary_label = theano.shared(self.binarise_label(), name='binary_label', borrow=True)
-        self._n_visible = n_visible
-        self._n_hidden = n_hidden
+        self.input_x = input_variable
+        self.input_y_binary = input_label
+        self.n_classes = n_classes
+        self.binary_label = theano.shared(self.binarise_label(), name='binary_label', borrow=True)
+        self.n_visible = n_visible
+        self.n_hidden = n_hidden
         self.W = theano.shared(numpy.asarray(rng.normal(0, 0.01, size=(n_visible, n_hidden)), dtype=theano.config.floatX),
                                       name="W")
         self.U = theano.shared(numpy.asarray(rng.normal(0, 0.01, size=(n_classes, n_hidden)), dtype=theano.config.floatX),
@@ -79,7 +79,7 @@ class BernoulliGRBMModel(object):
         self.lbias = theano.shared(value=numpy.zeros(n_classes,
                                                     dtype=theano.config.floatX),
                                   name='lbias', borrow=True)
-        self._theano_rng = RandomStreams(rng.randint(2 ** 30))
+        self.theano_rng = RandomStreams(rng.randint(2 ** 30))
 
         self.params = [self.W, self.U, self.hbias, self.lbias]
 
@@ -109,7 +109,7 @@ class BernoulliGRBMModel(object):
                     Returns the probability of the sample for each class in the model.
         """
         
-        free_energy = self._free_energy(self._input_x)
+        free_energy = self._free_energy(self.input_x)
         prob =  T.nnet.softmax(-free_energy)
         return prob
 
@@ -145,9 +145,9 @@ class BernoulliGRBMModel(object):
                                                   T.as_tensor_variable(1)), ndim=3)
         reshape_term2 = T.reshape(self.hbias,(T.as_tensor_variable(1),T.as_tensor_variable(self.hbias.shape[0])
                                                , T.as_tensor_variable(1)), ndim=3)
-        return (- T.dot(self.lbias, self._binary_label)
+        return (- T.dot(self.lbias, self.binary_label)
                 - T.nnet.softplus(reshape_term1
-                               + T.dot(self.U.T, self._binary_label)
+                               + T.dot(self.U.T, self.binary_label)
                                + reshape_term2).sum(axis=1))
 
     def binarise_label(self):
@@ -157,8 +157,8 @@ class BernoulliGRBMModel(object):
         Example: if n_classes = 2 this method generates [[1 0], [0 1]]
         """
         
-        label = numpy.zeros(shape=(self._n_classes,self._n_classes))
-        for i in range(self._n_classes):
+        label = numpy.zeros(shape=(self.n_classes,self.n_classes))
+        for i in range(self.n_classes):
             label[i][i] = 1
         return label
 
@@ -166,7 +166,7 @@ class BernoulliGRBMModel(object):
         return self.W, self.U, self.hbias, self.lbias
 
     def get_input(self):
-        return self._input_x, self._input_y_binary
+        return self.input_x, self.input_y_binary
 
     def predict_function(self):
         return T.argmax(self.p_y_given_x, axis=1)
@@ -185,7 +185,7 @@ class BernoulliGRBMModel(object):
         dropped_output : symbolic variable, shape = [n_samples, n_hidden]
         """
                 
-        shrd_rnd_strm = self._theano_rng
+        shrd_rnd_strm = self.theano_rng
         mask = shrd_rnd_strm.binomial(n=1, p=1 - pdrop, size=input.shape)
         dropped_output = input * T.cast(mask, dtype = theano.config.floatX)
         return dropped_output
@@ -232,7 +232,7 @@ class BernoulliGRBMModel(object):
         """
         
         pre_sigmoid_activation = self.vbias + T.dot( hidden, self.W.T)
-        vy1_mean = T.nnet.softmax((T.dot(self.lbias, self._binary_label)+ T.dot(T.dot(hidden ,self.U.T),self._binary_label)))
+        vy1_mean = T.nnet.softmax((T.dot(self.lbias, self.binary_label)+ T.dot(T.dot(hidden ,self.U.T),self.binary_label)))
         return [pre_sigmoid_activation, T.nnet.sigmoid(pre_sigmoid_activation), vy1_mean]
 
     def sample_hidden(self, vis_sample_x, vis_sample_y):
@@ -245,7 +245,7 @@ class BernoulliGRBMModel(object):
         """
         
         pre_sigmoid_hidden, hidden = self.propagate_visible(vis_sample_x, vis_sample_y)
-        hidden_sample = self._theano_rng.binomial(size=hidden.shape,
+        hidden_sample = self.theano_rng.binomial(size=hidden.shape,
                                              n=1, p=hidden,
                                              dtype=theano.config.floatX)
         return [pre_sigmoid_hidden, hidden, hidden_sample]
@@ -260,10 +260,10 @@ class BernoulliGRBMModel(object):
         """
         
         pre_sigmoid_vis_x, vis_x, vis_y = self.propagate_hidden(hidden_sample)
-        vis_x_sample = self._theano_rng.binomial(size=vis_x.shape,
+        vis_x_sample = self.theano_rng.binomial(size=vis_x.shape,
                                              n=1, p=vis_x,
                                              dtype=theano.config.floatX)
-        vis_y_sample = self._theano_rng.binomial(size=vis_y.shape,
+        vis_y_sample = self.theano_rng.binomial(size=vis_y.shape,
                                              n=1, p=vis_y,
                                            dtype=theano.config.floatX)
         return [pre_sigmoid_vis_x, vis_x, vis_x_sample, vis_y, vis_y_sample]
@@ -377,7 +377,7 @@ class BernoulliGRBMModel(object):
         """
         
         if chain_start is None:
-            pre_sigmoid_ph, ph_mean, ph_sample = self.sample_hidden(self._input_x, self._input_y_binary)
+            pre_sigmoid_ph, ph_mean, ph_sample = self.sample_hidden(self.input_x, self.input_y_binary)
             chain_start = ph_sample
 
         [pre_sigmoid_nvs_x, nv_x_means, nv_x_samples, nv_y_means, nv_y_samples, pre_sigmoid_nhs, nh_means, nh_samples], updates = \
@@ -386,15 +386,16 @@ class BernoulliGRBMModel(object):
         chain_end_x = nv_x_samples[-1]
         chain_end_y = nv_y_samples[-1]
 
-        cost = T.mean(self.energy_function(self._input_x, self._input_y_binary)) - T.mean(self.energy_function(chain_end_x, chain_end_y))
+        cost = T.mean(self.energy_function(self.input_x, self.input_y_binary)) - T.mean(self.energy_function(chain_end_x, chain_end_y))
 
+        # different regularization will be moved to common class in future
         if self.penalty == 'L2':
             cost += self.C2 * 0.5 * T.sum(self.W ** 2)
         elif self.penalty == 'JACOBIAN':
-            h = self.get_hidden_values(self._input_x, self.activation)
+            h = self.get_hidden_values(self.input_x, self.activation)
 
             if self.noise_type == 'Gaussian':
-                h += self._theano_rng.normal(size=self.hbias.shape, avg=0.0, std=theano.tensor.sqrt(self.noise))
+                h += self.theano_rng.normal(size=self.hbias.shape, avg=0.0, std=theano.tensor.sqrt(self.noise))
             contractive_cost = self.get_jacobian(h, self.activation)
             # add contractive regularizer
             cost += self.contraction_level * contractive_cost
@@ -447,8 +448,8 @@ class BernoulliGRBMModel(object):
         bit_i_idy = theano.shared(value=0, name='bit_i_idy')
 
         # binarize the input image by rounding to nearest integer
-        xi = T.round(self._input_x)
-        yi = self._input_y_binary
+        xi = T.round(self.input_x)
+        yi = self.input_y_binary
 
         # calculate free energy for the given bit configuration
         fe_xi = self.energy_function(xi,yi)
@@ -463,18 +464,18 @@ class BernoulliGRBMModel(object):
         fe_flip = self.energy_function(xi_flip,yi_flip)
 
         # equivalent to e^(-FE(x_i)) / (e^(-FE(x_i)) + e^(-FE(x_{\i})))
-        cost = T.mean((self._n_visible + self._n_classes) * T.log(T.nnet.sigmoid(fe_xi -
+        cost = T.mean((self.n_visible + self.n_classes) * T.log(T.nnet.sigmoid(fe_xi -
                                                             fe_flip)))
 
         if self.penalty == 'L2':
             cost += self.C2 * 0.5 * T.sum(self.W ** 2)
         elif self.penalty == 'JACOBIAN':
-            h = self.get_hidden_values(self._input_x, self.activation)
+            h = self.get_hidden_values(self.input_x, self.activation)
             if self.pdrop:
                 h = self.drop_output(h, self.pdrop)
 
             if self.noise_type == 'Gaussian':
-                h += self._theano_rng.normal(size=self.hbias.shape, avg=0.0, std=theano.tensor.sqrt(self.noise))
+                h += self.theano_rng.normal(size=self.hbias.shape, avg=0.0, std=theano.tensor.sqrt(self.noise))
             contractive_cost = self.get_jacobian(h, self.activation)
         
             # add contractive regularizer
@@ -487,8 +488,8 @@ class BernoulliGRBMModel(object):
                     + 0.5 * self.alpha * (1 - self.l1_ratio) * T.sum(self.W ** 2)
 
         # increment bit_i_idx % number as part of updates
-        updates[bit_i_idx] = (bit_i_idx + 1) % self._n_visible
-        updates[bit_i_idy] = (bit_i_idy + 1) % self._n_classes
+        updates[bit_i_idx] = (bit_i_idx + 1) % self.n_visible
+        updates[bit_i_idy] = (bit_i_idy + 1) % self.n_classes
 
         return cost
 
@@ -498,9 +499,10 @@ class BernoulliGRBMModel(object):
         It does one Gibbs step starting from the training data and compares the obtained sample with the training data.
         The reconstruction error is calculated deterministically, i.e. no sampling is done.
         """
-        pre_sigmoid_hidden, hidden, hidden_sample, pre_sigmoid_vis_x, new_vis_x, new_vis_x_sample, new_vis_y, new_vis_y_sample = self.gibbs_from_observed(self._input_x, self._input_y_binary)
-        x_cost_mean = ((self._input_x - new_vis_x) ** 2).sum(axis=1).mean()
-        y_cost_mean = ((self._input_y_binary - new_vis_y) ** 2).sum(axis=1).mean()
+        pre_sigmoid_hidden, hidden, hidden_sample, pre_sigmoid_vis_x, \
+        new_vis_x, new_vis_x_sample, new_vis_y, new_vis_y_sample = self.gibbs_from_observed(self.input_x, self.input_y_binary)
+        x_cost_mean = ((self.input_x - new_vis_x) ** 2).sum(axis=1).mean()
+        y_cost_mean = ((self.input_y_binary - new_vis_y) ** 2).sum(axis=1).mean()
         return x_cost_mean + y_cost_mean
 
     def get_monitoring_cost(self, updates):
@@ -517,7 +519,8 @@ class BernoulliGRBMModel(object):
         validation error : symbolic variable
         """
         
-        pre_sigmoid_hidden, hidden, hidden_sample, pre_sigmoid_vis_x, new_vis_x, new_vis_x_sample, new_vis_y, new_vis_y_sample = self.gibbs_from_observed(self._input_x, self._input_y_binary)
-        x_cost_mean = ((self._input_x - new_vis_x) ** 2).sum(axis=1).mean()
-        y_cost_mean = ((self._input_y_binary - new_vis_y) ** 2).sum(axis=1).mean()
+        pre_sigmoid_hidden, hidden, hidden_sample, pre_sigmoid_vis_x, new_vis_x, \
+        new_vis_x_sample, new_vis_y, new_vis_y_sample = self.gibbs_from_observed(self.input_x, self.input_y_binary)
+        x_cost_mean = ((self.input_x - new_vis_x) ** 2).sum(axis=1).mean()
+        y_cost_mean = ((self.input_y_binary - new_vis_y) ** 2).sum(axis=1).mean()
         return x_cost_mean + y_cost_mean

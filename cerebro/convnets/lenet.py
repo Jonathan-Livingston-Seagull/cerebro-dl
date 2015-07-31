@@ -14,8 +14,7 @@ class LeNet(BaseEstimator, ClassifierMixin):
     Parameters
     ----------
     learning_rate : float
-        The learning rate. Defaults to 6
-        The learning rate is normalized with respect to the batch_size as learning_rate / batch_size
+        The learning rate. Defaults to 0-1
 
     batch_size : integer
         Number of samples to use for one iteration. Defaults to 600.
@@ -23,14 +22,14 @@ class LeNet(BaseEstimator, ClassifierMixin):
     n_iter : integer
         The number of gradient updates (aka epochs). Defaults to 1000.
     """
-
-    def __init__(self, learning_rate=0.1, momentum=0.9, batch_size=500, n_epochs=100, nkerns=[20, 50], random_state=None):
+    def __init__(self, learning_rate=0.1, batch_size=500, n_epochs=100, nkerns=[20, 50], filter_sizes=[5,5], pool_sizes=[2,2], fully_connected_n_output=500, random_state=None):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
-        self.momentum = momentum
         self.n_epochs = n_epochs
         self.nkerns = nkerns
-        self.rng = check_random_state(random_state)
+        self.filter_sizes = filter_sizes
+        self.pool_sizes = pool_sizes
+        self.fully_connected_n_output = fully_connected_n_output
         self.model_ = None
         self.var_x = T.matrix('x')
         self.var_y = T.ivector('y')
@@ -57,16 +56,17 @@ class LeNet(BaseEstimator, ClassifierMixin):
         self : an instance of self
         """
 
-        self.n_features = x.shape[1]
+        self.n_features = numpy.int32(x.shape[1])
         self.n_classes = len(numpy.unique(y))
-        self.model_ = lenet_model.LeNetModel(self.var_x, self.var_y, self.nkerns, self.batch_size, self.n_features, self.n_classes, self.rng)
+        self.model_ = lenet_model.LeNetModel(self.var_x, self.var_y, self.nkerns, self.batch_size, self.n_features, self.n_classes, self.filter_sizes, self.pool_sizes, self.fully_connected_n_output)
 
         if validation_x is None or validation_y is None:
             stopping_criteria = None
-            
+
         train_set_x = theano.shared(numpy.asarray(x, dtype=theano.config.floatX), borrow=True)
         train_set_y = theano.shared(numpy.asarray(y, dtype=numpy.int32), borrow=True)
-        optimizer = MiniBatchGradientDescent(self.model_, self.n_epochs, self.learning_rate, self.batch_size, self.momentum)
+        optimizer = MiniBatchGradientDescent(self.model_, self.n_epochs, self.learning_rate, self.batch_size, 0,
+                                             stopping_criteria=stopping_criteria)
         optimizer.fit(train_set_x, train_set_y, validation_x=validation_x, validation_y=validation_y)
 
         return self

@@ -83,82 +83,95 @@ class LeNetConvPoolLayer(object):
         self.params = [self.W, self.b]
 
 class LeNetModel:
-    """
-    Lenet model to construct deep layers of network. Filter size is used 5 * 5. In future it will be 
-    handled as a parameter. in case if you want to change the filter size make sure you adujust other
-    parameters accordingly
+    """ Lenet model to construct deep layers of network.
+
+        :param input_variable: Theano symbolic variable indicating the input matrix(x)
+
+        :param input_label: Theano symbolic variable indicating the input matrix(y)
+
+        :param nkerns: Each element represents how much depth in a single layer
+        :type nkerns: list ( the no of layers will be automatically calculated from the size of the list )
+
+        :param _n_classes: Number of classes
+        :type _n_classes: integer
+
+        :param filter_sizes: Each element represents size of the filter in a layer
+        :type filter_sizes: list
+
+        :param pool_sizes: Each element represents size of the pooling in a layer
+        :type pool_sizes: list
+
+        :param fully_connected_n_output: number of hidden units in fully connected layer
+        :type fully_connected_n_output: integer
+
     """
     
-    def __init__(self, var_input, var_label, nkerns, batch_size, n_features, n_classes, rng):
-        self.var_input = var_input
-        self.var_label = var_label
-        self.rng = rng
-        self.nkerns = nkerns
+    def __init__(self, input_variable, input_label, nkerns, batch_size, n_features, n_classes, filter_sizes, pool_sizes, fully_connected_n_output):
+        self.input_variable = input_variable
+        self.input_label = input_label
+        self.rng = numpy.random.RandomState(23455)
         self.batch_size = batch_size
         self.n_features = n_features
         self.n_classes = n_classes
-        #be sure that input is perfect square
+        self.params = []
+        self.conv_pool_layers = []
+        self.n_conv_pool_layers = len(nkerns)
         input_shape = int(math.sqrt(n_features))
-        self.layer0_input = self.var_input.reshape((self.batch_size, 1, input_shape, input_shape))
-    
-        # Construct the first convolutional pooling layer:
-        # filtering reduces the image size to (28-5+1 , 28-5+1) = (24, 24)
-        # maxpooling reduces this further to (24/2, 24/2) = (12, 12)
-        # 4D output tensor is thus of shape (batch_size, nkerns[0], 12, 12)
-        self.layer0 = LeNetConvPoolLayer(
+        # create n layers ( n = size of kernels) be sure you checked the filter sizes
+        # matches with input size ( look at the formulae in literature)
+        for i in xrange(self.n_conv_pool_layers):
+            if i == 0:
+                #be sure that input is perfect square
+                input_dimension = 1
+                layer_input = self.input_variable.reshape((self.batch_size, 1, input_shape, input_shape))
+            else:
+                input_shape = (input_shape - filter_sizes[i-1] + 1) / 2
+                input_dimension = nkerns[i-1]
+                layer_input = self.conv_pool_layers[-1].output
+
+            lenet_conv_pool_layer = LeNetConvPoolLayer(
             self.rng,
-            input=self.layer0_input,
-            image_shape=(self.batch_size, 1, input_shape, input_shape),
-            filter_shape=(self.nkerns[0], 1, 5, 5),
-            poolsize=(2, 2)
-        )
-        #self.layer0_output = self.layer0.output.eval({x:train_set_x.get_value()[:batch_size]})
-        #print(self.layer0_output.shape)
-        # Construct the second convolutional pooling layer
-        # filtering reduces the image size to (12-5+1, 12-5+1) = (8, 8)
-        # maxpooling reduces this further to (8/2, 8/2) = (4, 4)
-        # 4D output tensor is thus of shape (batch_size, nkerns[1], 4, 4)
-        input_shape = int ((input_shape - 5 + 1) / 2)
-        self.layer1 = LeNetConvPoolLayer(
-            self.rng,
-            input=self.layer0.output,
-            image_shape=(self.batch_size, self.nkerns[0], input_shape, input_shape),
-            filter_shape=(self.nkerns[1], self.nkerns[0], 5, 5),
-            poolsize=(2, 2)
-        )
-        
-        input_shape = int ((input_shape - 5 + 1) / 2)
-        #layer1_output = layer1.output.eval({x:train_set_x.get_value()[:batch_size]})
-        #print(layer1_output.shape)
-        # the HiddenLayer being fully-connected, it operates on 2D matrices of
-        # shape (batch_size, num_pixels) (i.e matrix of rasterized images).
-        # This will generate a matrix of shape (batch_size, nkerns[1] * 4 * 4),
-        # or (500, 50 * 4 * 4) = (500, 800) with the default values.
-        self.layer2_input = self.layer1.output.flatten(2)
-        #print(layer1_output.flatten(2).shape)
+            input=layer_input,
+            image_shape=(self.batch_size, input_dimension, input_shape, input_shape),
+            filter_shape=(nkerns[i], input_dimension, filter_sizes[i], filter_sizes[i]),
+            poolsize=(pool_sizes[i], pool_sizes[i])
+            )
+
+            self.conv_pool_layers.append(lenet_conv_pool_layer)
+            self.params.extend(lenet_conv_pool_layer.params)
+
+        input_shape = (input_shape - filter_sizes[-1] + 1) / 2
+        layer_input = self.conv_pool_layers[-1].output.flatten(2)
+
         # construct a fully-connected sigmoidal layer
-        self.layer2 = HiddenLayerModel(
+        fully_connected_layer = HiddenLayerModel(
             self.rng,
-            input=self.layer2_input,
-            n_in=self.nkerns[1] * input_shape * input_shape,
-            n_out=500,
+            input=layer_input,
+            n_in=nkerns[-1] * input_shape * input_shape,
+            n_out=fully_connected_n_output,
             activation=T.tanh
         )
-    
-        # classify the values of the fully-connected sigmoidal layer
-        self.layer3 = LogisticRegressionModel(self.layer2.output,self.var_label, 500, self.n_classes)
-        
+
+        self.conv_pool_layers.append(fully_connected_layer)
+        self.params.extend(fully_connected_layer.params)
+
+        # Final logistic regression classification layer
+        self.logistic_regression_layer = LogisticRegressionModel(
+            self.conv_pool_layers[-1].output, self.input_label, fully_connected_n_output, self.n_classes
+        )
+        self.params.extend(self.logistic_regression_layer.params)
+
     def parameters(self):
-        return self.layer3.params + self.layer2.params + self.layer1.params + self.layer0.params
+        return self.params
 
     def predict_function(self):
-        return T.argmax(self.layer3.p_y_given_x, axis=1)
-    
+        return T.argmax(self.logistic_regression_layer.p_y_given_x, axis=1)
+
     def predict_prob(self):
-        return self.layer3.p_y_given_x
-    
+        return self.logistic_regression_layer.p_y_given_x
+
     def get_monitoring_cost(self, updates=None):
-        cost = self.layer3.get_monitoring_cost(updates)
+        cost = self.logistic_regression_layer.get_monitoring_cost(updates)
         return cost
 
     def parameters_gradient_updates(self):
@@ -166,8 +179,7 @@ class LeNetModel:
         return T.grad(cost, self.parameters()), None
 
     def get_input(self):
-        return self.var_input, self.var_label
+        return self.input_variable, self.input_label
 
     def get_validation_error(self):
         return T.mean(T.neq(self.predict_function(), self.var_label))
-
